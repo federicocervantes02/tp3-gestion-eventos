@@ -1,4 +1,4 @@
-# 🎪 EventHub – Sistema de Gestión de Eventos
+# 🎪 EventosFC – Sistema de Gestión de Eventos
 
 **TP3 – Programación III | Tecnicatura Superior en Programación**
 **Base de datos: MySQL**
