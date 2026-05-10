@@ -3,16 +3,16 @@
 **TP3 – Programación III | Tecnicatura Superior en Programación**
 **Base de datos: MySQL**
 
-Aplicación web full-stack para gestionar eventos: creación, inscripción de participantes, control de cupos y seguimiento de estados. Autenticación con JWT, stored procedure, trigger y transacciones con ROLLBACK.
+Una app web para gestionar eventos: crear eventos, inscribirse, ver cupos y manejar estados. Tiene autenticación con JWT, un stored procedure, un trigger y transacciones con ROLLBACK.
 
 ---
 
-## Stack tecnológico
+## Stack
 
 - **Backend:** Node.js + Express
 - **Base de datos:** MySQL
 - **Autenticación:** JWT + bcryptjs
-- **Frontend:** HTML + CSS + Vanilla JS (fetch)
+- **Frontend:** HTML + CSS + JS (fetch)
 
 ---
 
@@ -26,73 +26,69 @@ tp3-eventos/
 ├── package.json
 ├── database.sql               # Script completo de la BD
 ├── db/
-│   └── index.js               # Conexión a MySQL (Pool)
+│   └── index.js               # Conexión a MySQL
 ├── controllers/
 │   └── controllers.js         # Lógica de cada endpoint
 ├── routes/
-│   ├── auth.js                # POST /register y /login
+│   ├── auth.js                # Registro y login
 │   └── eventos.js             # CRUD de eventos (requiere JWT)
 ├── middleware/
-│   └── auth.js                # Verificación de token JWT
+│   └── auth.js                # Verificación del token JWT
 └── public/
-    ├── index.html             # SPA del frontend
+    ├── index.html             # Frontend
     ├── style.css              # Estilos
-    └── app.js                 # Lógica frontend (fetch + JWT)
+    └── app.js                 # Lógica del frontend
 ```
 
 ---
 
-## ⚙️ Instalación paso a paso
+## ⚙️ Cómo levantar el proyecto
 
-### 1. Instalar MySQL
-Bajarlo de: https://dev.mysql.com/downloads/installer/
-Durante la instalación anotá la contraseña del usuario `root`.
+### 1. Clonar o descomprimir el proyecto
 
-### 2. Descomprimir y abrir la carpeta
-Extraer el zip y abrir una terminal dentro de la carpeta.
+### 2. Crear la base de datos
 
-### 3. Crear la base de datos y las tablas
-
-Opción A — desde la terminal:
 ```bash
 mysql -u root -p < database.sql
 ```
 
-Opción B — desde MySQL Workbench:
-Abrir el archivo `database.sql` y ejecutarlo completo.
+O abrirlo desde MySQL Workbench y ejecutarlo.
 
-### 4. Crear el archivo .env
-Copiar `.env.example` como `.env` y editarlo:
+### 3. Crear el archivo .env
+
+Copiar `.env.example` como `.env` y completar con tus datos:
 
 ```env
 DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=gestion_eventos
 DB_USER=root
-DB_PASSWORD=tu_password_de_mysql
+DB_PASSWORD=tu_password
 
-JWT_SECRET=cualquier_string_largo_y_random
+JWT_SECRET=alguna_clave_larga_random
 JWT_EXPIRES_IN=24h
 PORT=3000
 ```
 
-### 5. Instalar dependencias
+### 4. Instalar dependencias
 
 ```bash
 npm install
 ```
 
-### 6. Iniciar el servidor
+### 5. Iniciar el servidor
 
 ```bash
 npm start
 ```
 
-### 7. Abrir la app
+### 6. Abrir en el navegador
 
-Ir a: **http://localhost:3000**
+```
+http://localhost:3000
+```
 
-**Credenciales de prueba:** `admin@eventos.com` / `123456`
+Usuario de prueba: `admin@eventos.com` / `123456`
 
 ---
 
@@ -100,49 +96,45 @@ Ir a: **http://localhost:3000**
 
 | Tabla | Descripción |
 |---|---|
-| `usuarios` | Cuentas de acceso (admin / participante) |
+| `usuarios` | Usuarios registrados con su rol |
 | `categorias` | Tipos de eventos |
-| `organizadores` | Empresas o personas que organizan eventos |
-| `eventos` | Recurso principal con cupos, fechas y precio |
+| `organizadores` | Quién organiza cada evento |
+| `eventos` | El recurso principal |
 | `inscripciones` | Relación entre usuarios y eventos |
-| `historial_inscripciones` | Log automático via trigger |
+| `historial_inscripciones` | Log automático generado por el trigger |
 
 ---
 
 ## 🔧 Stored Procedure: `inscribir_participante`
 
-Antes de inscribir, verifica que el evento exista, esté activo, tenga cupos disponibles y que el usuario no esté ya inscripto. Si algo falla, lanza un error con `SIGNAL SQLSTATE '45000'` y no inserta nada. Si todo está bien, inserta la inscripción y descuenta el cupo.
-
-```sql
-CALL inscribir_participante(2, 1);
-```
+Lo que hace es verificar varias cosas antes de inscribir a alguien: que el evento exista, que esté activo, que tenga cupos y que el usuario no esté ya anotado. Si algo falla, tira un error y no inserta nada. Si todo está bien, inserta la inscripción y resta un cupo al evento. Lo llamo desde Node con `CALL inscribir_participante(id_usuario, id_evento)`.
 
 ---
 
 ## ⚡ Trigger: `log_cambio_inscripcion`
 
-Se dispara `AFTER UPDATE` en la tabla `inscripciones`. Si el estado cambió, guarda el historial en `historial_inscripciones`. Si el nuevo estado es `cancelada`, además devuelve el cupo al evento automáticamente con un `UPDATE` en `eventos`.
+Se activa automáticamente después de cada UPDATE en la tabla `inscripciones`. Si el estado cambió, guarda el cambio en `historial_inscripciones`. Y si el nuevo estado es "cancelada", también le devuelve el cupo al evento solito, sin que yo tenga que hacer nada desde Node.
 
 ---
 
 ## 🔒 Transacción con ROLLBACK
 
-Usada en `PUT /api/eventos/:id`. Se obtiene una conexión dedicada del pool, se ejecuta `beginTransaction()`, y si cualquier operación falla se llama a `rollback()` para revertir todos los cambios. Esto evita que el evento quede con datos inconsistentes si falla a mitad de la actualización.
+La uso en el endpoint `PUT /api/eventos/:id`. Abro una transacción, verifico que el evento exista, recalculo los cupos si cambió la capacidad y hago el UPDATE. Si en algún paso hay un error, llamo al rollback y todo vuelve al estado anterior. Así no queda nada a medias en la base de datos.
 
 ---
 
-## 🔑 Endpoints de la API
+## 🔑 Endpoints
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| POST | `/api/auth/register` | No | Crear cuenta |
-| POST | `/api/auth/login` | No | Login → JWT |
+| POST | `/api/auth/register` | No | Registrar usuario |
+| POST | `/api/auth/login` | No | Login, devuelve JWT |
 | GET | `/api/eventos` | ✅ | Listar eventos |
 | GET | `/api/eventos/:id` | ✅ | Ver un evento |
 | POST | `/api/eventos` | ✅ | Crear evento |
-| PUT | `/api/eventos/:id` | ✅ | Actualizar (con transacción) |
+| PUT | `/api/eventos/:id` | ✅ | Actualizar evento |
 | DELETE | `/api/eventos/:id` | ✅ | Cancelar evento |
-| POST | `/api/eventos/:id/inscribir` | ✅ | Inscribirse (stored procedure) |
+| POST | `/api/eventos/:id/inscribir` | ✅ | Inscribirse |
 | DELETE | `/api/eventos/:id/cancelar-inscripcion` | ✅ | Cancelar inscripción |
 | GET | `/api/eventos/:id/inscripciones` | ✅ | Ver inscriptos |
 
@@ -152,24 +144,24 @@ Usada en `PUT /api/eventos/:id`. Se obtiene una conexión dedicada del pool, se 
 
 ### 1. ¿Qué es un servidor web y cómo funciona el ciclo request-response?
 
-Un servidor web es un programa que escucha en un puerto esperando conexiones de clientes. Cuando llega una petición HTTP (con método, URL y cuerpo), el servidor la procesa, ejecuta la lógica correspondiente, consulta la base de datos si hace falta, y devuelve una respuesta con un código de estado y datos en JSON. Ese ciclo de "el cliente pide, el servidor responde" se llama request-response. En este proyecto Node.js escucha en el puerto 3000 y Express enruta cada request al controller correcto.
+Un servidor web es básicamente un programa que está escuchando en un puerto esperando que alguien le mande una petición. Cuando llega una request con método, URL y datos, el servidor la procesa, hace lo que tenga que hacer (consultar la base, calcular algo) y manda de vuelta una response con un código de estado y los datos en JSON. En este proyecto Node corre en el puerto 3000 y Express se encarga de derivar cada request al controller que corresponde.
 
 ### 2. ¿Qué es Express y por qué lo usamos en lugar de usar solo Node.js?
 
-Express es un framework que corre sobre Node.js y simplifica la creación de rutas, el parseo del body y la gestión de middlewares. Con Node puro habría que leer el stream de datos byte a byte, parsear la URL manualmente y construir las respuestas HTTP sin ayuda. Express nos da todo eso resuelto con pocas líneas, y permite organizar el proyecto en routers y middlewares separados para que el código sea más legible y mantenible.
+Express es un framework que va arriba de Node y te simplifica un montón de cosas. Con Node puro tendrías que manejar los streams de datos a mano, parsear las URLs vos mismo y armar las respuestas HTTP desde cero. Express te da todo eso listo, más un sistema de routers y middlewares para organizar el código. Sin Express el proyecto sería mucho más difícil de mantener.
 
 ### 3. ¿Qué es un JWT y cómo se diferencia de guardar la sesión en el servidor?
 
-JWT es un token firmado digitalmente que contiene los datos del usuario y se guarda del lado del cliente (en este proyecto en el localStorage). El servidor no guarda ningún estado: solo verifica la firma con su clave secreta en cada request protegido. Con sesiones tradicionales el servidor mantiene en memoria qué usuarios están logueados, lo que consume recursos y complica escalar. JWT es stateless: cualquier instancia del servidor puede verificarlo con solo conocer la clave secreta.
+JWT es un token que el servidor genera cuando el usuario hace login y se lo manda al cliente. El cliente lo guarda (en este caso en el localStorage) y lo manda en cada request protegida. El servidor no guarda nada, solo verifica la firma del token con su clave secreta. La diferencia con las sesiones tradicionales es que esas sí guardan el estado del lado del servidor, lo que usa más recursos y complica escalar. Con JWT es stateless, cualquier instancia del servidor puede verificar el token.
 
 ### 4. ¿Qué ventaja tiene usar un procedimiento almacenado en lugar de escribir ese SQL desde Node.js?
 
-El stored procedure vive en la base de datos, por lo que la validación se aplica sin importar quién intente insertar datos: la API, un script de mantenimiento o una consulta directa desde MySQL Workbench. También reduce el tráfico entre Node y MySQL porque todo se resuelve con un solo CALL. Centraliza reglas de negocio críticas (verificar cupos antes de inscribir) en un solo lugar más fácil de auditar sin tocar el código de la aplicación.
+La principal ventaja es que la lógica de negocio queda en la base de datos y no depende de que pase por la API. Si alguien inserta directo desde Workbench, las mismas reglas se aplican igual. También es más eficiente porque todo se resuelve con un solo CALL en vez de varios queries ida y vuelta entre Node y MySQL. Y si hay que cambiar la lógica de inscripción, lo cambio en un solo lugar.
 
 ### 5. ¿Por qué es importante usar transacciones? Poné un ejemplo de cuando un ROLLBACK salva la integridad de los datos.
 
-Las transacciones garantizan que un conjunto de operaciones se ejecute como una unidad: o todas tienen éxito (commit) o ninguna se aplica (rollback). Al actualizar un evento que cambió su capacidad, primero calculamos los nuevos cupos y luego ejecutamos el UPDATE. Si entre esas operaciones hay un error, sin transacción el evento podría quedar con la capacidad actualizada pero los cupos mal calculados. Con rollback todo vuelve al estado anterior y la respuesta al cliente refleja el error correctamente.
+Las transacciones son importantes porque garantizan que un conjunto de operaciones se complete entero o no se aplique ninguna. En este proyecto, al actualizar un evento que cambió de capacidad, primero calculo los nuevos cupos y después hago el UPDATE. Si falla en el medio, sin transacción el evento podría quedar con la capacidad nueva pero los cupos mal calculados. Con el ROLLBACK todo vuelve atrás y los datos quedan consistentes.
 
 ### 6. ¿Qué es un trigger? Describí el trigger que implementaste y en qué momento se dispara.
 
-Un trigger es código SQL que MySQL ejecuta automáticamente cuando ocurre un evento en una tabla, sin que lo llamemos nosotros. Implementamos `log_cambio_inscripcion`, que se dispara AFTER UPDATE en la tabla inscripciones. Si el estado cambió, guarda el historial en historial_inscripciones. Además, si el nuevo estado es "cancelada", ejecuta automáticamente un UPDATE en eventos para devolver el cupo, sin que el código de Node tenga que hacerlo explícitamente.
+Un trigger es código que la base de datos ejecuta sola cuando pasa algo en una tabla, sin que vos lo llames. Yo implementé `log_cambio_inscripcion`, que se dispara después de cada UPDATE en la tabla inscripciones. Si el estado de la inscripción cambió, guarda el historial en otra tabla. Y si el nuevo estado es "cancelada", devuelve el cupo al evento automáticamente. Todo eso sin que Node tenga que hacer nada extra.
