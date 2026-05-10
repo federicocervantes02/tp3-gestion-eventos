@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EventosFC – Gestión de Eventos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ==================== PANTALLA: LOGIN ==================== -->
+<div id="screen-login" class="screen active">
+  <div class="auth-bg">
+    <div class="auth-deco"></div>
+    <div class="auth-panel">
+      <div class="auth-logo">
+        <span class="logo-icon">🎪</span>
+        <span class="logo-text">EventosFC</span>
+      </div>
+      <h2 class="auth-title">Bienvenido de nuevo</h2>
+      <p class="auth-sub">Iniciá sesión para gestionar tus eventos</p>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="tu@email.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••">
+      </div>
+      <div id="login-error" class="alert alert-error hidden"></div>
+      <button class="btn btn-primary btn-full" onclick="handleLogin()">Iniciar sesión</button>
+      <p class="auth-switch">¿No tenés cuenta? <a href="#" onclick="showScreen('screen-register')">Registrarse gratis</a></p>
+      <div class="demo-box">
+        <span class="demo-label">Demo</span>
+        <span>admin@eventos.com / 123456</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PANTALLA: REGISTRO ================= -->
+<div id="screen-register" class="screen">
+  <div class="auth-bg">
+    <div class="auth-deco"></div>
+    <div class="auth-panel">
+      <div class="auth-logo">
+        <span class="logo-icon">🎪</span>
+        <span class="logo-text">EventosFC</span>
+      </div>
+      <h2 class="auth-title">Crear cuenta</h2>
+      <p class="auth-sub">Empezá a gestionar eventos hoy</p>
+
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="reg-nombre" placeholder="Tu nombre">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="tu@email.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div id="reg-error" class="alert alert-error hidden"></div>
+      <div id="reg-ok"    class="alert alert-ok hidden"></div>
+      <button class="btn btn-primary btn-full" onclick="handleRegister()">Crear cuenta</button>
+      <p class="auth-switch">¿Ya tenés cuenta? <a href="#" onclick="showScreen('screen-login')">Iniciar sesión</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PANTALLA: DASHBOARD ================ -->
+<div id="screen-dashboard" class="screen">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <span class="nav-logo">🎪 EventosFC</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-username" id="nav-username"></span>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Cerrar sesión</button>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+
+    <!-- Header de la página -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Eventos</h1>
+        <p class="page-sub">Gestioná todos tus eventos desde un solo lugar</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModalNuevo()">+ Nuevo evento</button>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-icon">📅</div>
+        <div>
+          <div class="stat-val" id="stat-total">–</div>
+          <div class="stat-key">Total eventos</div>
+        </div>
+      </div>
+      <div class="stat-box stat-green">
+        <div class="stat-icon">✅</div>
+        <div>
+          <div class="stat-val" id="stat-activos">–</div>
+          <div class="stat-key">Activos</div>
+        </div>
+      </div>
+      <div class="stat-box stat-amber">
+        <div class="stat-icon">👥</div>
+        <div>
+          <div class="stat-val" id="stat-inscriptos">–</div>
+          <div class="stat-key">Inscriptos totales</div>
+        </div>
+      </div>
+      <div class="stat-box stat-red">
+        <div class="stat-icon">❌</div>
+        <div>
+          <div class="stat-val" id="stat-cancelados">–</div>
+          <div class="stat-key">Cancelados</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards de eventos -->
+    <div class="eventos-grid" id="eventos-grid">
+      <p class="loading-msg">Cargando eventos...</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- =========== MODAL: CREAR/EDITAR EVENTO ============ -->
+<div id="modal-evento" class="modal-overlay hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-header">
+      <h3 id="modal-titulo">Nuevo evento</h3>
+      <button class="btn-close" onclick="cerrarModal('modal-evento')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="form-evento-id">
+
+      <div class="form-group">
+        <label>Título del evento *</label>
+        <input type="text" id="form-titulo" placeholder="Ej: Festival de Jazz 2025">
+      </div>
+      <div class="form-group">
+        <label>Descripción</label>
+        <textarea id="form-descripcion" rows="2" placeholder="Breve descripción del evento..."></textarea>
+      </div>
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Categoría</label>
+          <select id="form-categoria"></select>
+        </div>
+        <div class="form-group">
+          <label>Organizador</label>
+          <select id="form-organizador"></select>
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="form-estado">
+            <option value="activo">Activo</option>
+            <option value="cancelado">Cancelado</option>
+            <option value="finalizado">Finalizado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha y hora inicio *</label>
+          <input type="datetime-local" id="form-fecha-inicio">
+        </div>
+        <div class="form-group">
+          <label>Fecha y hora fin *</label>
+          <input type="datetime-local" id="form-fecha-fin">
+        </div>
+      </div>
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Lugar *</label>
+          <input type="text" id="form-lugar" placeholder="Dirección o nombre del lugar">
+        </div>
+        <div class="form-group">
+          <label>Capacidad *</label>
+          <input type="number" id="form-capacidad" min="1" placeholder="100">
+        </div>
+        <div class="form-group">
+          <label>Precio (ARS)</label>
+          <input type="number" id="form-precio" min="0" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+
+      <div id="modal-evento-error" class="alert alert-error hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-evento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEvento()">Guardar evento</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========== MODAL: VER INSCRIPTOS ============ -->
+<div id="modal-inscriptos" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modal-inscriptos-titulo">Inscriptos</h3>
+      <button class="btn-close" onclick="cerrarModal('modal-inscriptos')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-inscriptos-body">
+      Cargando...
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-inscriptos')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
